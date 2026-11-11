@@ -6,7 +6,7 @@ import { Mic, Square, Trash2, Activity } from "lucide-react";
 // Initialize SpeechRecognition for cross-browser compatibility
 const SpeechRecognitionAPI = 
   typeof window !== "undefined" && 
-  (window.SpeechRecognition || window.webkitSpeechRecognition);
+  ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
 export function MicrophoneButton() {
   const [isRecording, setIsRecording] = useState(false);
