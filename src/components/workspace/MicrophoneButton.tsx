@@ -104,7 +104,7 @@ export function MicrophoneButton() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
       // 1. Initialize Web Audio API Visualizer
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       const audioContext = new AudioContextClass();
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
