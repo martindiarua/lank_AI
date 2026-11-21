@@ -20,8 +20,9 @@ enum MessageRole {
 
 model User {
   id           String   @id @default(uuid())
+  name         String?
   email        String   @unique
-  passwordHash String
+  password String
   role         UserRole @default(USER)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -101,4 +102,13 @@ model CommonPhrase {
   updatedAt      DateTime @updatedAt
 
   @@index([category])
+}
+
+model Translation {
+  id             String   @id @default(uuid())
+  sourceLang     String
+  targetLang     String
+  originalText   String
+  translatedText String
+  createdAt      DateTime @default(now())
 }

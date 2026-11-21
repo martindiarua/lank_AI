@@ -1,0 +1,52 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x android/gradlew
+
+      - name: Build Release APK
+        working-directory: android
+        run: ./gradlew assembleRelease
+
+      - name: Sign Release APK
+        run: |
+          keytool -genkey -v -keystore release-key.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias lankai -storepass lankai123 -keypass lankai123 \
+            -dname "CN=LANK AI, OU=Dev, O=LANK AI, L=Kaduna, ST=Kaduna, C=NG"
+
+          BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
+          $BUILD_TOOLS/zipalign -v -p 4 \
+            android/app/build/outputs/apk/release/app-release-unsigned.apk \
+            app-aligned.apk
+
+          $BUILD_TOOLS/apksigner sign --ks release-key.jks \
+            --ks-key-alias lankai \
+            --ks-pass pass:lankai123 \
+            --key-pass pass:lankai123 \
+            --out lank-ai-release.apk \
+            app-aligned.apk
+
+      - name: Upload lank-ai-release.apk
+        uses: actions/upload-artifact@v4
+        with:
+          name: lank-ai-release
+          path: lank-ai-release.apk

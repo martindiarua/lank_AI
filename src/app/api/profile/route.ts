@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
-import { db } from '../../../lib/db';
-import { getSession } from '../../../lib/auth';
-import { z } from 'zod';
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { decrypt } from "@/lib/auth";
 
-// Zod schema strictly validates incoming update requests
 const profileSchema = z.object({
   displayName: z.string().optional(),
   homeLanguage: z.string().optional(),
@@ -13,43 +13,68 @@ const profileSchema = z.object({
   offlineMode: z.boolean().optional(),
 });
 
-// GET /api/profile -> Retrieves the authenticated user's settings
-export async function GET() {
-  const session = await getSession();
-  
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+async function getAuthenticatedUserId() {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("session")?.value;
+  if (!sessionCookie) return null;
   try {
-    const profile = await db.profile.findUnique({
-      where: { userId: session.userId },
-    });
-    return NextResponse.json(profile, { status: 200 });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
+    const payload = await decrypt(sessionCookie);
+    return payload.userId as string;
+  } catch {
+    return null;
   }
 }
 
-// PUT /api/profile -> Updates the user's audio and UI preferences
-export async function PUT(req: Request) {
-  const session = await getSession();
-  
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function GET() {
   try {
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        profile: true,
+      },
+    });
+
+    return NextResponse.json({ user }, { status: 200 });
+  } catch (error) {
+    console.error("Profile fetch error:", error);
+    return NextResponse.json({ error: "Failed to load profile" }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const data = profileSchema.parse(body);
 
-    const updatedProfile = await db.profile.update({
-      where: { userId: session.userId },
-      data,
+    const profile = await db.profile.upsert({
+      where: { userId },
+      update: data,
+      create: {
+        userId,
+        ...data,
+      },
     });
 
-    return NextResponse.json(updatedProfile, { status: 200 });
+    return NextResponse.json({ success: true, profile }, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: 'Invalid request data' }, { status: 400 });
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
+    }
+    console.error("Profile update error:", error);
+    return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
   }
 }
