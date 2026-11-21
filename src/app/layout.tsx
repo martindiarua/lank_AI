@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import "./globals.css"; 
+import "./globals.css";
+import OfflineBanner from "../components/shared/OfflineBanner";
 
 export const metadata: Metadata = {
   title: "LANK AI",
@@ -14,6 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <OfflineBanner />
         {children}
       </body>
     </html>
