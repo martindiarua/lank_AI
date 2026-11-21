@@ -21,6 +21,7 @@ jobs:
       - name: Install dependencies & sync Capacitor
         run: |
           npm install
+          mkdir -p public android/app/src/main/assets
           npx cap sync android
 
       - name: Set up JDK 21
